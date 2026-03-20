@@ -1,16 +1,35 @@
-# Socat Network Operations Manager
+<p align="center">
+  <h1 align="center">Socat Network Operations Manager</h1>
+  <p align="center">
+    A socat-based network listener, forwarder, tunneler, and traffic redirector<br>with reliability and multi-session management.
+  </p>
+</p>
 
-# socat_manager.sh
+<p align="center">
+  <img src="https://img.shields.io/badge/version-2.3.0-blue?style=flat-square" alt="Version 2.3.0">
+  <img src="https://img.shields.io/badge/shell-bash%204.4%2B-4EAA25?style=flat-square&logo=gnubash&logoColor=white" alt="Bash 4.4+">
+  <img src="https://img.shields.io/badge/platform-linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License">
+  <img src="https://img.shields.io/badge/maintained-yes-brightgreen?style=flat-square" alt="Maintained">
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
+  <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa?style=flat-square" alt="Code of Conduct">
+</p>
 
-**A socat-based network listener, forwarder, tunneler, and traffic redirector with reliability and multi-session management.**
-
-> Version 2.3.0 · Bash 4.4+ · Linux
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#operational-modes">Modes</a> ·
+  <a href="USAGE_GUIDE.md">Usage Guide</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="SECURITY.md">Security</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Key Highlights](#key-highlights)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
@@ -32,7 +51,10 @@
 - [Directory Structure](#directory-structure)
 - [Security Considerations](#security-considerations)
 - [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Documentation](#documentation)
 - [Version History](#version-history)
+- [Acknowledgments](#acknowledgments)
 - [License](#license)
 
 ---
@@ -42,6 +64,27 @@
 `socat_manager.sh` provides a unified command-line interface for managing socat-based network operations. It wraps socat's powerful but complex syntax into six intuitive operational modes, adding session tracking, process group isolation, protocol-aware lifecycle management, traffic capture, and automatic restart capabilities.
 
 Every launched socat process receives a unique 8-character hex **Session ID**, is placed in its own **process group** via `setsid`, and is tracked in a persistent `.session` metadata file. This enables reliable status queries and clean shutdowns across terminal sessions and script invocations — you can launch a redirector in one terminal, check its status from another, and stop it from a third.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
+---
+
+## Key Highlights
+
+| | Feature | Description |
+|---|---------|-------------|
+| 🔀 | **Six Operational Modes** | listen, batch, forward, tunnel, redirect — plus status and stop for lifecycle management |
+| 🔌 | **Protocol Flexibility** | TCP4, TCP6, UDP4, UDP6 individually (`--proto`) or both TCP+UDP simultaneously (`--dual-stack`) |
+| 📡 | **Traffic Capture** | Verbose hex dump logging (`--capture`) on all modes — listen, batch, forward, tunnel, redirect |
+| 🔖 | **Session Tracking** | Unique 8-char hex Session IDs with persistent `.session` metadata files |
+| 🔒 | **Process Isolation** | Each socat process in its own process group via `setsid` with PID-file handoff |
+| 🛡️ | **Protocol-Aware Stop** | Stopping TCP does not affect UDP on the same port, and vice versa |
+| ⚡ | **Non-Blocking Launch** | Script returns to prompt immediately — no terminal blocking |
+| 🔄 | **Watchdog Auto-Restart** | Exponential backoff (1s→60s cap) with configurable max restarts |
+| 📦 | **Batch Operations** | Launch listeners on port lists, ranges, or config files in a single command |
+| 📝 | **Structured Logging** | OWASP/NIST SP 800-92 compliant format with correlation IDs and per-session audit trails |
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -70,6 +113,8 @@ Every launched socat process receives a unique 8-character hex **Session ID**, i
 - Only socat processes targeted during port-based fallback kill (process name verification)
 - No shell metacharacters permitted in hostname or path parameters
 
+See [SECURITY.md](SECURITY.md) for the full threat model, implemented controls, and secure deployment guidelines.
+
 ### Logging and Audit
 
 - Structured master execution log with correlation IDs (OWASP/NIST SP 800-92 compliant format)
@@ -77,6 +122,8 @@ Every launched socat process receives a unique 8-character hex **Session ID**, i
 - Per-session error logs for stderr capture
 - Traffic capture logs (socat `-v` hex dumps) per session and protocol
 - Console output with color-coded severity levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -142,6 +189,8 @@ LAUNCHER_PID=9999
 9. Remove session file after confirmed dead
 ```
 
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
 ## Prerequisites
@@ -170,26 +219,45 @@ LAUNCHER_PID=9999
 - Root/sudo for privileged ports (<1024)
 - Bash 4.4+ for associative arrays and `${var,,}` lowercase expansion
 
+### Compatibility
+
+| Distribution | Tested | Notes |
+|-------------|--------|-------|
+| Ubuntu 20.04+ | ✓ | Primary development platform |
+| Debian 11+ | ✓ | Fully compatible |
+| Kali Linux 2023+ | ✓ | socat typically pre-installed |
+| RHEL/CentOS 8+ | ✓ | Use `yum` or `dnf` for dependencies |
+| Fedora 36+ | ✓ | Use `dnf` for dependencies |
+| Arch Linux | ✓ | Use `pacman` for dependencies |
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
 ## Quick Start
 
 ```bash
-# Install socat
+# 1. Install socat
 sudo apt-get update && sudo apt-get install -y socat
 
-# Clone or download socat_manager.sh
+# 2. Clone or download
+git clone https://github.com/<your-org>/socat-manager.git
+cd socat-manager
 chmod +x socat_manager.sh
 
-# Start a TCP listener on port 8080
+# 3. Start a TCP listener on port 8080
 ./socat_manager.sh listen --port 8080
 
-# Check session status
+# 4. Check session status
 ./socat_manager.sh status
 
-# Stop everything
+# 5. Stop everything
 ./socat_manager.sh stop --all
 ```
+
+For detailed installation options including system-wide command installation and virtual environment setup, see the [Usage Guide](USAGE_GUIDE.md).
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -228,7 +296,7 @@ Start a single TCP or UDP listener that captures incoming data to a log file.
 | `--dual-stack` | Also start listener on alternate protocol |
 | `--capture` | Enable verbose hex dump traffic logging |
 | `--bind <ADDR>` | Bind to specific IP address |
-| `--name <NAME>` | Custom session name |
+| `--name <n>` | Custom session name |
 | `--logfile <PATH>` | Custom data log file path |
 | `--watchdog` | Enable auto-restart on crash |
 | `--socat-opts <OPTS>` | Additional socat address options |
@@ -309,7 +377,7 @@ Create a bidirectional port forwarder between a local port and a remote target.
 | `--dual-stack` | Also start forwarder on alternate protocol |
 | `--capture` | Enable traffic capture |
 | `--logfile <PATH>` | Custom capture log file |
-| `--name <NAME>` | Custom session name |
+| `--name <n>` | Custom session name |
 | `--watchdog` | Enable auto-restart |
 
 ### tunnel Mode
@@ -334,7 +402,7 @@ Create an encrypted TLS/SSL tunnel. Accepts TLS connections on a local port and 
 ./socat_manager.sh tunnel --port 4443 --rhost 10.0.0.5 --rport 22 --cn myhost.local
 ```
 
-**Protocol note:** TLS tunnels are TCP-only by design. Using `--proto udp4` will produce a clear error with guidance to use `forward --proto udp4` instead. `--dual-stack` adds a plaintext UDP forwarder with a warning that UDP traffic is not encrypted.
+> **Note:** TLS tunnels are TCP-only by design. `--proto udp4` will produce a clear error with guidance to use `forward --proto udp4` instead. `--dual-stack` adds a plaintext UDP forwarder with a warning that UDP traffic is not encrypted.
 
 **Options:**
 
@@ -350,7 +418,7 @@ Create an encrypted TLS/SSL tunnel. Accepts TLS connections on a local port and 
 | `--dual-stack` | Also start plaintext UDP forwarder on same port |
 | `--capture` | Enable capture of decrypted traffic |
 | `--logfile <PATH>` | Custom capture log file |
-| `--name <NAME>` | Custom session name |
+| `--name <n>` | Custom session name |
 | `--watchdog` | Enable auto-restart |
 
 **Connecting to a tunnel:**
@@ -391,7 +459,7 @@ Redirect/proxy traffic transparently between a local port and a remote target. O
 | `--dual-stack` | Also start redirector on alternate protocol |
 | `--capture` | Enable traffic capture (hex dump) |
 | `--logfile <PATH>` | Custom capture log file |
-| `--name <NAME>` | Custom session name |
+| `--name <n>` | Custom session name |
 | `--watchdog` | Enable auto-restart |
 
 ### status Mode
@@ -418,7 +486,7 @@ Display all active managed sessions or detailed information for a specific sessi
 ./socat_manager.sh status --cleanup
 ```
 
-**Status table output:**
+**Status table output example:**
 
 ```
   ─── Active Sessions ───
@@ -454,7 +522,9 @@ Stop one or more sessions by session ID, name, port, PID, or all.
 ./socat_manager.sh stop --all
 ```
 
-**Protocol isolation:** Stopping a TCP session on port 8443 does **not** affect a UDP session on the same port. Each protocol's stop operation is scoped to its own protocol only. The `--port` flag is the exception — it stops all sessions on that port across all protocols.
+> **Protocol isolation:** Stopping a TCP session on port 8443 does **not** affect a UDP session on the same port. Each protocol's stop operation is scoped to its own protocol only. The `--port` flag is the exception — it stops all sessions on that port across all protocols.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -472,6 +542,8 @@ These options are available on all operational modes:
 | `-h, --help` | Show context-sensitive help (per mode). |
 | `--version` | Show version string and exit. |
 
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
 ## Session Management
@@ -488,6 +560,8 @@ Sessions persist across terminal exits and script invocations. The `status` comm
 
 **Backward compatibility:** If legacy `.pid` session files from v1.x are detected, they are automatically migrated to the v2.x `.session` format on startup.
 
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
 ## Protocol Selection
@@ -497,17 +571,10 @@ Sessions persist across terminal exits and script invocations. The `status` comm
 Select a specific protocol for the session:
 
 ```bash
-# TCP4 (default)
-./socat_manager.sh listen --port 8080 --proto tcp4
-
-# UDP4
-./socat_manager.sh listen --port 5353 --proto udp4
-
-# TCP6 (IPv6)
-./socat_manager.sh listen --port 8080 --proto tcp6
-
-# UDP6 (IPv6)
-./socat_manager.sh listen --port 5353 --proto udp6
+./socat_manager.sh listen --port 8080 --proto tcp4    # TCP4 (default)
+./socat_manager.sh listen --port 5353 --proto udp4    # UDP4
+./socat_manager.sh listen --port 8080 --proto tcp6    # TCP6 (IPv6)
+./socat_manager.sh listen --port 5353 --proto udp6    # UDP6 (IPv6)
 ```
 
 ### Dual-Stack (`--dual-stack`)
@@ -524,15 +591,12 @@ Launch both TCP and UDP on the same port. Each protocol gets its own Session ID:
 Stop operations are protocol-aware:
 
 ```bash
-# Stop only TCP (UDP remains active)
-./socat_manager.sh stop a1b2c3d4
-
-# Stop only UDP
-./socat_manager.sh stop e5f67890
-
-# Stop both (all sessions on port)
-./socat_manager.sh stop --port 8443
+./socat_manager.sh stop a1b2c3d4       # Stop only TCP (UDP remains active)
+./socat_manager.sh stop e5f67890       # Stop only UDP
+./socat_manager.sh stop --port 8443    # Stop both (all protocols on port)
 ```
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -555,6 +619,8 @@ For tunnel mode, capture logs contain **decrypted** traffic between the TLS term
 
 For dual-stack with capture, each protocol gets its own capture log.
 
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
 ## Watchdog Auto-Restart
@@ -565,12 +631,15 @@ The `--watchdog` flag enables automatic restart if the socat process crashes:
 ./socat_manager.sh listen --port 8080 --watchdog
 ```
 
-Behavior:
+| Parameter | Value |
+|-----------|-------|
+| Initial restart delay | 1 second |
+| Backoff pattern | Exponential: 1s, 2s, 4s, 8s, 16s, 32s, 60s |
+| Maximum backoff | 60 seconds (capped) |
+| Maximum restarts | 10 (default, configurable in source) |
+| Graceful stop | Writes `.stop` signal file; watchdog checks between restarts |
 
-- Initial restart delay: 1 second
-- Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 60s (capped)
-- Maximum restarts: 10 (configurable in source)
-- Graceful stop: writes a `.stop` signal file that the watchdog checks between restarts
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -588,37 +657,46 @@ Behavior:
 
 ### Log Format
 
-Master and session logs use structured format:
+Master and session logs use structured format compliant with OWASP Logging Cheat Sheet and NIST SP 800-92:
 
 ```
 2026-03-20T14:30:00.123 [INFO] [corr:a1b2c3d4] [session] Session registered: name=redir-tcp4-8443 pid=12345 pgid=12345 mode=redirect proto=tcp4 port=8443
 ```
 
-Fields: ISO-8601 timestamp, severity level, correlation ID, component name, message.
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
 ## Directory Structure
 
 ```
-socat_manager.sh          # Main script
-├── sessions/             # Session metadata files (.session) [perms: 700]
-│   ├── a1b2c3d4.session  # Active session file [perms: 600]
+socat_manager.sh              # Main script (chmod +x)
+├── sessions/                 # Session metadata files (.session) [perms: 700]
+│   ├── a1b2c3d4.session      # Active session file [perms: 600]
 │   └── e5f67890.session
-├── logs/                 # All log files
-│   ├── socat_manager-2026-03-20T14-30-00.log   # Master execution log
-│   ├── session-a1b2c3d4-2026-03-20T14-30-00.log  # Session log
-│   ├── session-a1b2c3d4-error.log               # Session stderr
-│   ├── listener-tcp4-8080.log                    # Listener data capture
-│   └── capture-tcp4-8443-example.com-443-2026-03-20T14-30-00.log  # Traffic capture
-├── certs/                # Auto-generated TLS certificates (tunnel mode)
-│   ├── socat-tunnel-2026-03-20T14-30-00.pem  # Certificate [perms: 644]
-│   └── socat-tunnel-2026-03-20T14-30-00.key  # Private key [perms: 600]
-└── conf/                 # Configuration files (batch port configs)
-    └── ports.conf
+├── logs/                     # All log files
+│   ├── socat_manager-*.log   # Master execution logs
+│   ├── session-*-*.log       # Session audit trail logs
+│   ├── session-*-error.log   # Session stderr logs
+│   ├── listener-*-*.log      # Listener data capture logs
+│   └── capture-*-*.log       # Traffic capture logs
+├── certs/                    # Auto-generated TLS certificates (tunnel mode)
+│   ├── *.pem                 # Certificates [perms: 644]
+│   └── *.key                 # Private keys [perms: 600]
+├── conf/                     # Configuration files
+│   └── ports.conf            # Batch port configuration
+├── README.md                 # This file
+├── USAGE_GUIDE.md            # Detailed usage and deployment guide
+├── CHANGELOG.md              # Version history and change details
+├── SECURITY.md               # Security policy and threat model
+├── CODE_OF_CONDUCT.md        # Contributor code of conduct
+├── LICENSE                   # MIT License
+└── .gitignore                # Git ignore rules
 ```
 
-All directories are created automatically on first run.
+All runtime directories (`sessions/`, `logs/`, `certs/`, `conf/`) are created automatically on first run.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -649,7 +727,9 @@ All directories are created automatically on first run.
 - Does not filter or inspect traffic content (capture is passive hex dump)
 - Self-signed certificates (tunnel mode default) are not trusted by clients unless explicitly configured
 
-For production deployments, layer additional security controls (firewall rules, TLS certificate pinning, network segmentation) around sessions managed by this tool.
+For the full security policy, threat model, implemented controls, known limitations, and secure deployment guidelines, see [SECURITY.md](SECURITY.md).
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
@@ -699,20 +779,89 @@ If SIGTERM doesn't work within the grace period (5 seconds), socat may have chil
 ss -tlnp | grep :<PORT>               # Verify port is freed
 ```
 
+For additional troubleshooting scenarios, see the [Usage Guide](USAGE_GUIDE.md#10-troubleshooting).
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
+---
+
+## Contributing
+
+Contributions are welcome and appreciated. To contribute:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/your-feature-name`)
+3. **Commit** your changes with clear, descriptive messages (`git commit -m 'Add: description of change'`)
+4. **Push** to your branch (`git push origin feature/your-feature-name`)
+5. **Open** a Pull Request with a detailed description of the change, its motivation, and testing performed
+
+### Guidelines
+
+- Follow the existing code style: comprehensive function documentation headers (Description, Parameters, Returns), inline comments explaining non-obvious logic, and consistent formatting
+- All user-supplied inputs must pass through the existing validation functions
+- New CLI flags must be added to both the mode argument parser and the corresponding help function
+- Test all operational modes affected by changes
+- Update `CHANGELOG.md` with your changes under an `[Unreleased]` section
+- Read and follow the [Code of Conduct](CODE_OF_CONDUCT.md)
+- Report security vulnerabilities privately per [SECURITY.md](SECURITY.md) — do not open public issues for security bugs
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README.md](README.md) | Project overview, features, architecture, and quick reference (this file) |
+| [USAGE_GUIDE.md](USAGE_GUIDE.md) | Detailed usage, installation methods (direct, system command, venv), operational scenarios, and troubleshooting |
+| [CHANGELOG.md](CHANGELOG.md) | Complete version history with detailed change descriptions per release |
+| [SECURITY.md](SECURITY.md) | Security policy, vulnerability reporting, threat model, implemented controls, and secure deployment guidelines |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Contributor Covenant code of conduct with responsible use policy for security tooling |
+| [LICENSE](LICENSE) | MIT License with liability disclaimer and dependency notices |
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
 ## Version History
 
-| Version | Changes |
-|---------|---------|
-| **2.3.0** | `--capture` extended to all operational modes (listen, batch, forward, tunnel, redirect). `--proto` added to tunnel mode (with TLS-aware validation). |
-| **2.2.0** | Protocol-aware stop: stopping TCP no longer kills UDP on shared ports. `--proto` added to redirect mode. Full documentation and annotation restoration. |
-| **2.1.0** | Fixed terminal blocking (PID-file handoff via `setsid` + `exec`). Fixed wrong PID tracking. Added `--dual-stack` to all modes. Increased stop grace period to 5s. |
-| **2.0.0** | Session ID system (8-char hex). PGID tracking via `setsid`. Session files (`.session`). Comprehensive stop sequence with port verification. |
-| **1.0.0** | Initial release. Six operational modes. PID-file tracking. Basic stop/status. |
+| Version | Date | Changes |
+|---------|------|---------|
+| **2.3.0** | 2026-03-20 | `--capture` extended to all operational modes. `--proto` added to tunnel mode (TLS-aware validation). |
+| **2.2.0** | 2026-03-20 | Protocol-aware stop: stopping TCP no longer kills UDP on shared ports. `--proto` added to redirect mode. Full documentation restoration. |
+| **2.1.0** | 2026-03-20 | Fixed terminal blocking (PID-file handoff). Fixed wrong PID tracking. Added `--dual-stack` to all modes. |
+| **2.0.0** | 2026-03-20 | Session ID system (8-char hex). PGID tracking via `setsid`. Comprehensive stop sequence with port verification. |
+| **1.0.0** | 2026-03-20 | Initial release. Six operational modes. PID-file tracking. Basic stop/status. |
+
+See [CHANGELOG.md](CHANGELOG.md) for complete details on every change.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
+---
+
+## Acknowledgments
+
+- **[socat](http://www.dest-unreach.org/socat/)** by Gerhard Rieger — the powerful relay utility that this manager wraps
+- **[OpenSSL](https://www.openssl.org/)** — TLS/SSL implementation used for tunnel mode certificate generation
+- **[Contributor Covenant](https://www.contributor-covenant.org/)** — code of conduct framework
+- **[Keep a Changelog](https://keepachangelog.com/)** — changelog format standard
+- **[Semantic Versioning](https://semver.org/)** — versioning scheme
+- **[Shields.io](https://shields.io/)** — badge generation service
+- **OWASP** and **NIST** — security standards referenced throughout (OWASP Logging Cheat Sheet, NIST SP 800-92, CWE-20, CWE-22, CWE-78)
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
 ## License
 
-This project is provided as-is for operational and educational use. See LICENSE file for terms if present, otherwise all rights reserved by the author.
+Distributed under the MIT License. See [LICENSE](LICENSE) for full terms.
+
+```
+MIT License · Copyright (c) 2026 socat_manager Contributors
+```
+
+This software is intended for authorized network operations, security testing, research, and educational purposes only. Users are solely responsible for ensuring their use complies with all applicable laws and regulations.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>

@@ -4,7 +4,7 @@
 #======================================================================
 # Name       : Socat Network Operations Manager
 #
-# Synopsis   : A socat-based network listener, forwarder,
+# Synopsis   : A comprehensive socat-based network listener, forwarder,
 #              tunneler, and traffic redirector with reliability and
 #              multi-session management.
 #
@@ -3065,6 +3065,7 @@ OPTIONS
     --bind <ADDRESS>         Bind to specific IP address
     --name <n>            Custom session name
     --logfile <PATH>         Custom log file for captured data
+    --capture                Enable traffic capture (verbose hex dump)
     --watchdog               Enable auto-restart on crash
     --socat-opts <OPTS>      Additional socat address options
     -v, --verbose            Debug output
@@ -3074,6 +3075,7 @@ EXAMPLES
     bash socat_manager.sh listen --port 8080
     bash socat_manager.sh listen --port 5353 --proto udp4
     bash socat_manager.sh listen --port 8080 --dual-stack
+    bash socat_manager.sh listen --port 8080 --capture
     bash socat_manager.sh listen --port 4443 --proto tcp6
     bash socat_manager.sh listen --port 80 --watchdog --bind 0.0.0.0
 HELPEOF

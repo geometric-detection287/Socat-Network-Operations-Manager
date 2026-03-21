@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -96,7 +96,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Full history for release notes generation
 
@@ -126,68 +126,21 @@ jobs:
           fi
           echo "✓ Version match: ${SCRIPT_VERSION}"
 
-      # --- Build source tarball ---
-      - name: Build source tarball
+      # --- Build distribution packages via Makefile ---
+      # Uses `make dist` which is the single source of truth for tarball
+      # contents. This ensures the GitHub Release assets match exactly
+      # what `make dist` produces locally.
+      - name: Build distribution packages
+        run: make dist
+
+      # --- List distribution artifacts ---
+      - name: List distribution artifacts
         run: |
-          DIST_NAME="${{ steps.version.outputs.dist_name }}"
-          mkdir -p dist staging/${DIST_NAME}/{bin,templates}
-
-          # Copy source files
-          cp socat_manager.sh Makefile staging/${DIST_NAME}/
-          cp bin/socat-manager staging/${DIST_NAME}/bin/
-          cp templates/activate.sh staging/${DIST_NAME}/templates/
-          test -f .shellcheckrc && cp .shellcheckrc staging/${DIST_NAME}/
-          test -f .gitignore && cp .gitignore staging/${DIST_NAME}/
-
-          # Copy documentation
-          for doc in README.md USAGE_GUIDE.md CHANGELOG.md SECURITY.md \
-                    CODE_OF_CONDUCT.md CONTRIBUTING.md LICENSE; do
-            test -f "${doc}" && cp "${doc}" staging/${DIST_NAME}/
-          done
-
-          # Copy tests
-          if [ -d tests ]; then
-            cp -r tests staging/${DIST_NAME}/tests
-            chmod +x staging/${DIST_NAME}/tests/stubs/* 2>/dev/null || true
-          fi
-
-          # Build tarball
-          tar czf dist/${DIST_NAME}.tar.gz -C staging ${DIST_NAME}
-          echo "Created: dist/${DIST_NAME}.tar.gz"
-          ls -lh dist/${DIST_NAME}.tar.gz
-
-      # --- Build venv example tarball ---
-      - name: Build venv example tarball
-        run: |
-          DIST_NAME="${{ steps.version.outputs.dist_name }}"
-          VENV_NAME="${DIST_NAME}-venv-example"
-          mkdir -p staging/${VENV_NAME}/{sessions,logs,certs,conf}
-
-          # Copy script and activation template
-          cp socat_manager.sh staging/${VENV_NAME}/
-          chmod +x staging/${VENV_NAME}/socat_manager.sh
-          cp templates/activate.sh staging/${VENV_NAME}/
-          chmod +x staging/${VENV_NAME}/activate.sh
-          chmod 700 staging/${VENV_NAME}/sessions
-
-          # Copy documentation
-          for doc in README.md USAGE_GUIDE.md CHANGELOG.md SECURITY.md \
-                    CODE_OF_CONDUCT.md LICENSE; do
-            test -f "${doc}" && cp "${doc}" staging/${VENV_NAME}/
-          done
-
-          # Build tarball
-          tar czf dist/${VENV_NAME}.tar.gz -C staging ${VENV_NAME}
-          echo "Created: dist/${VENV_NAME}.tar.gz"
-          ls -lh dist/${VENV_NAME}.tar.gz
-
-      # --- Generate SHA256 checksums ---
-      - name: Generate SHA256 checksums
-        run: |
-          cd dist
-          sha256sum *.tar.gz > SHA256SUMS.txt
+          echo "Distribution packages:"
+          ls -lh dist/
+          echo ""
           echo "SHA256 checksums:"
-          cat SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
 
       # --- Create GitHub Release ---
       - name: Create GitHub Release

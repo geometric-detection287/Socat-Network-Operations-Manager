@@ -570,7 +570,7 @@ generate_session_id() {
         sid="${sid,,}"
 
         # Check for collision with existing session files
-        if ! ls "${SESSION_DIR}"/*.session 2>/dev/null | grep -q "${sid}" 2>/dev/null; then
+        if [[ ! -f "${SESSION_DIR}/${sid}.session" ]]; then
             echo "${sid}"
             return 0
         fi

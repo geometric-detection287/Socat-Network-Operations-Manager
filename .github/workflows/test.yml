@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install ShellCheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
@@ -104,7 +104,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # --- Install BATS from GitHub releases ---
       - name: Install BATS
@@ -147,14 +147,35 @@ jobs:
       # --- Run unit tests ---
       - name: Run unit tests
         run: |
+          mkdir -p test-results
           echo "Running unit tests..."
-          bats tests/unit/
+          bats tests/unit/ --tap > test-results/unit.tap 2>&1 || {
+            echo "Unit tests failed. Output:"
+            cat test-results/unit.tap
+            exit 1
+          }
+          cat test-results/unit.tap
 
       # --- Run integration tests ---
       - name: Run integration tests
         run: |
+          mkdir -p test-results
           echo "Running integration tests..."
-          bats tests/integration/
+          bats tests/integration/ --tap > test-results/integration.tap 2>&1 || {
+            echo "Integration tests failed. Output:"
+            cat test-results/integration.tap
+            exit 1
+          }
+          cat test-results/integration.tap
+
+      # --- Upload test results on failure ---
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results-bash-${{ matrix.bash }}-${{ matrix.os }}
+          path: test-results/
+          retention-days: 14
 
       # --- Summary ---
       - name: Test summary

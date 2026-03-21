@@ -60,7 +60,7 @@ SHELLCHECK  := shellcheck
 # =====================================================================
 
 .PHONY: help check-deps lint test test-unit test-integration \
-        install uninstall venv dist clean
+        install uninstall verify venv dist clean _check-socat
 
 .DEFAULT_GOAL := help
 
@@ -156,10 +156,21 @@ check-deps: ## Verify all required and optional dependencies
 
 lint: ## Run ShellCheck static analysis on the main script
 	@echo ""
+	@if ! command -v $(SHELLCHECK) >/dev/null 2>&1; then \
+		echo "  ⚠ ShellCheck not found — skipping lint"; \
+		echo "  Install: sudo apt-get install -y shellcheck"; \
+		echo ""; \
+		exit 0; \
+	fi
 	@echo "  Running ShellCheck..."
 	@$(SHELLCHECK) --shell=bash --severity=warning $(SCRIPT) \
 		&& echo "  ✓ ShellCheck passed" \
 		|| { echo "  ✗ ShellCheck found issues"; exit 1; }
+	@if [ -f bin/socat-manager ]; then \
+		$(SHELLCHECK) --shell=bash --severity=warning bin/socat-manager \
+			&& echo "  ✓ ShellCheck passed (bin/socat-manager)" \
+			|| { echo "  ✗ ShellCheck found issues in bin/socat-manager"; exit 1; }; \
+	fi
 	@echo ""
 
 # =====================================================================
@@ -186,10 +197,37 @@ test-integration: ## Run integration tests only (lifecycle, dual-stack, capture)
 	@echo ""
 
 # =====================================================================
+# PRE-INSTALL VALIDATION
+# =====================================================================
+
+_check-socat:
+	@printf "  Checking socat... "
+	@if command -v socat >/dev/null 2>&1; then \
+		echo "✓ found"; \
+	else \
+		echo "✗ not found"; \
+		echo ""; \
+		echo "  ERROR: socat is required but not installed."; \
+		echo "  Install: sudo apt-get install -y socat"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@printf "  Checking bash 4.4+... "
+	@bash_ver=$$(bash --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+' | head -1) && \
+		major=$$(echo "$$bash_ver" | cut -d. -f1) && \
+		minor=$$(echo "$$bash_ver" | cut -d. -f2) && \
+		if [ "$$major" -gt 4 ] || { [ "$$major" -eq 4 ] && [ "$$minor" -ge 4 ]; }; then \
+			echo "✓ $$bash_ver"; \
+		else \
+			echo "✗ $$bash_ver (need 4.4+)"; \
+			exit 1; \
+		fi
+
+# =====================================================================
 # INSTALL
 # =====================================================================
 
-install: ## Install system-wide command (requires sudo for default paths)
+install: _check-socat ## Install system-wide command (requires sudo for default paths)
 	@echo ""
 	@echo "  Installing socat-manager v$(VERSION)..."
 	@echo "  ────────────────────────────────────────"
@@ -260,6 +298,55 @@ uninstall: ## Remove system-wide installation
 	fi
 	@echo ""
 	@echo "  ✓ Uninstall complete"
+	@echo ""
+
+# =====================================================================
+# POST-INSTALL VERIFICATION
+# =====================================================================
+
+verify: ## Verify installation is working correctly
+	@echo ""
+	@echo "  Verifying socat-manager installation..."
+	@echo "  ────────────────────────────────────────"
+	@# Check wrapper is on PATH
+	@printf "  Command on PATH:  "
+	@if command -v socat-manager >/dev/null 2>&1; then \
+		echo "✓ $$(command -v socat-manager)"; \
+	else \
+		echo "✗ socat-manager not found on PATH"; \
+		echo "    Ensure $(BINDIR) is on your PATH"; \
+		exit 1; \
+	fi
+	@# Check version output
+	@printf "  Version output:   "
+	@ver_output=$$(socat-manager --version 2>&1) && \
+		echo "✓ $$ver_output" || \
+		{ echo "✗ socat-manager --version failed"; exit 1; }
+	@# Check install directory
+	@printf "  Install directory: "
+	@if [ -d "$(INSTALL_DIR)" ]; then \
+		echo "✓ $(INSTALL_DIR)"; \
+	else \
+		echo "✗ $(INSTALL_DIR) not found"; \
+		exit 1; \
+	fi
+	@# Check runtime directories
+	@printf "  Runtime dirs:     "
+	@if [ -d "$(INSTALL_DIR)/sessions" ] && [ -d "$(INSTALL_DIR)/logs" ]; then \
+		echo "✓ sessions/ logs/ certs/ conf/"; \
+	else \
+		echo "✗ missing runtime directories"; \
+		exit 1; \
+	fi
+	@# Check socat dependency
+	@printf "  socat available:  "
+	@if command -v socat >/dev/null 2>&1; then \
+		echo "✓ found"; \
+	else \
+		echo "⚠ not found (install before use)"; \
+	fi
+	@echo ""
+	@echo "  ✓ Installation verified"
 	@echo ""
 
 # =====================================================================

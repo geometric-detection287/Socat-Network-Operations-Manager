@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+#======================================================================
+# WRAPPER    : bin/socat-manager
+#======================================================================
+# Synopsis   : System-wide wrapper for socat_manager.sh.
+#
+# Description: Provides a stable command-line entry point for
+#              socat_manager.sh when installed via `make install`.
+#              The wrapper:
+#
+#              1. Resolves the installation directory where the main
+#                 script and runtime data (sessions/, logs/, certs/)
+#                 reside
+#              2. Validates that the install directory and script exist
+#              3. Changes to the install directory so the script's
+#                 SCRIPT_DIR resolution points to the correct location
+#                 (all runtime paths derive from SCRIPT_DIR)
+#              4. Exec's into the real script, replacing this process
+#                 (so PIDs, signals, and exit codes pass through cleanly)
+#
+#              The SOCAT_MANAGER_HOME variable can be overridden via
+#              environment to support non-default install locations:
+#
+#                SOCAT_MANAGER_HOME=/custom/path socat-manager status
+#
+# Install    : Placed at /usr/local/bin/socat-manager by `make install`.
+#              The install target patches SOCAT_MANAGER_HOME below to
+#              match the configured PREFIX.
+#
+# Notes      : - Uses exec (not a subshell) so the socat_manager.sh
+#                process replaces this wrapper — no extra PID
+#              - Exit codes from socat_manager.sh pass through directly
+#              - Signals (SIGTERM, SIGINT) reach socat_manager.sh directly
+#              - Compatible with sudo: `sudo socat-manager listen --port 443`
+#
+# Version    : 1.0.0
+#======================================================================
+
+set -euo pipefail
+
+# =====================================================================
+# INSTALLATION PATH
+# Default installation directory. Patched by `make install` to match
+# the configured PREFIX. Can be overridden at runtime via environment.
+# =====================================================================
+
+SOCAT_MANAGER_HOME="${SOCAT_MANAGER_HOME:-/opt/tools/socat-manager}"
+
+# =====================================================================
+# VALIDATION
+# Verify the installation directory and script exist before exec.
+# Provides clear error messages with remediation guidance.
+# =====================================================================
+
+# Check that the installation directory exists
+if [[ ! -d "${SOCAT_MANAGER_HOME}" ]]; then
+    echo "Error: socat-manager installation directory not found:" >&2
+    echo "  ${SOCAT_MANAGER_HOME}" >&2
+    echo "" >&2
+    echo "Remediation:" >&2
+    echo "  1. Reinstall: make install" >&2
+    echo "  2. Or set a custom path: SOCAT_MANAGER_HOME=/path/to socat-manager ..." >&2
+    exit 1
+fi
+
+# Check that the main script exists within the installation directory
+if [[ ! -f "${SOCAT_MANAGER_HOME}/socat_manager.sh" ]]; then
+    echo "Error: socat_manager.sh not found in installation directory:" >&2
+    echo "  ${SOCAT_MANAGER_HOME}/socat_manager.sh" >&2
+    echo "" >&2
+    echo "Remediation:" >&2
+    echo "  1. Reinstall: make install" >&2
+    echo "  2. Verify file permissions: ls -la ${SOCAT_MANAGER_HOME}/" >&2
+    exit 1
+fi
+
+# Check that the main script is executable
+if [[ ! -x "${SOCAT_MANAGER_HOME}/socat_manager.sh" ]]; then
+    echo "Error: socat_manager.sh is not executable:" >&2
+    echo "  ${SOCAT_MANAGER_HOME}/socat_manager.sh" >&2
+    echo "" >&2
+    echo "Remediation:" >&2
+    echo "  chmod +x ${SOCAT_MANAGER_HOME}/socat_manager.sh" >&2
+    exit 1
+fi
+
+# =====================================================================
+# EXECUTION
+# Change to the installation directory and exec into the real script.
+# cd is required because socat_manager.sh derives SCRIPT_DIR from
+# BASH_SOURCE[0], and all runtime paths (sessions/, logs/, certs/)
+# are relative to SCRIPT_DIR.
+# =====================================================================
+
+cd "${SOCAT_MANAGER_HOME}" || {
+    echo "Error: Cannot cd to ${SOCAT_MANAGER_HOME}" >&2
+    exit 1
+}
+
+exec "${SOCAT_MANAGER_HOME}/socat_manager.sh" "$@"

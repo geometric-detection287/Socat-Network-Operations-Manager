@@ -1,0 +1,51 @@
+# =============================================================================
+# .shellcheckrc - ShellCheck configuration for socat_manager.sh
+# =============================================================================
+# ShellCheck is a static analysis tool for bash scripts. This configuration
+# suppresses known false positives and sets the default shell dialect.
+#
+# Usage:
+#   shellcheck socat_manager.sh          # Uses this config automatically
+#   shellcheck -x socat_manager.sh       # Also follow source directives
+#
+# Reference: https://www.shellcheck.net/wiki/
+# =============================================================================
+
+# Default shell dialect: bash
+shell=bash
+
+# ---------------------------------------------------------------------------
+# Suppressed warnings (with rationale for each)
+# ---------------------------------------------------------------------------
+
+# SC2034: Variable appears unused.
+# Rationale: Many variables are set in one function and read in another
+# (e.g., LAUNCH_SID set in launch_socat_session, read in mode_listen).
+# ShellCheck cannot trace cross-function usage in bash.
+disable=SC2034
+
+# SC2155: Declare and assign separately to avoid masking return values.
+# Rationale: Patterns like `local var=$(cmd)` are used extensively where
+# the return value is checked on the next line or the command cannot fail
+# (e.g., `local timestamp; timestamp="$(date ...)")`. Splitting every
+# declaration would significantly reduce readability for minimal safety
+# gain in this context.
+disable=SC2155
+
+# SC2086: Double quote to prevent globbing and word splitting.
+# Rationale: NOT globally disabled. This is only suppressed on specific
+# lines where intentional word splitting is needed (e.g., passing socat
+# options that must be split). Use # shellcheck disable=SC2086 inline
+# for those cases. This entry is here for documentation only.
+# disable=SC2086
+
+# SC1090: Can't follow non-constant source.
+# Rationale: The test framework sources the script dynamically from a
+# temp directory path. ShellCheck cannot resolve the path at analysis
+# time. This only affects test files, not the main script.
+disable=SC1090
+
+# SC1091: Not following sourced file (file not found).
+# Rationale: Same as SC1090 — test helpers source scripts from runtime-
+# determined paths. The source targets are validated by the test framework.
+disable=SC1091

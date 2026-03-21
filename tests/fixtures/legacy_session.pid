@@ -1,1 +1,11 @@
-
+# socat_manager session file (v1.0 format - test fixture)
+# Generated: 2026-03-20 10:00:00
+PID=88888
+MODE=redirect
+PROTOCOL=tcp4
+LOCAL_PORT=8443
+REMOTE_HOST=example.com
+REMOTE_PORT=443
+STARTED=2026-03-20T10:00:00
+CORRELATION=oldcorr1
+MASTER_PID=77777

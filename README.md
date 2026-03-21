@@ -12,12 +12,12 @@
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License">
   <img src="https://img.shields.io/badge/maintained-yes-brightgreen?style=flat-square" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
-  <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa?style=flat-square" alt="Code of Conduct">
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa?style=flat-square" alt="Code of Conduct">
   <img src="https://github.com/Sandler73/Socat-Network-Operations-Manager/actions/workflows/test.yml/badge.svg" alt="CI Tests">
-  <img src="https://img.shields.io/badge/BATS-182%20tests-blue?style=flat-square" alt="187 BATS Tests">
+  <img src="https://img.shields.io/badge/BATS-187%20tests-blue?style=flat-square" alt="187 BATS Tests">
 </p>
 
 <p align="center">
@@ -40,6 +40,7 @@
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+  - [Mode Examples](#mode-examples)
 - [Operational Modes](#operational-modes)
   - [listen](#listen-mode)
   - [batch](#batch-mode)
@@ -63,6 +64,7 @@
 - [Version History](#version-history)
 - [Acknowledgments](#acknowledgments)
 - [License](#license)
+- [Support](#support)
 
 ---
 
@@ -228,14 +230,20 @@ LAUNCHER_PID=9999
 
 ### Compatibility
 
-| Distribution | Tested | Notes |
-|-------------|--------|-------|
-| Ubuntu 20.04+ | ✓ | Primary development platform |
-| Debian 11+ | ✓ | Fully compatible |
-| Kali Linux 2023+ | ✓ | socat typically pre-installed |
-| RHEL/CentOS 8+ | ✓ | Use `yum` or `dnf` for dependencies |
-| Fedora 36+ | ✓ | Use `dnf` for dependencies |
-| Arch Linux | ✓ | Use `pacman` for dependencies |
+Tested via [GitHub Actions CI](.github/workflows/test.yml) on every push across 8 environments:
+
+| Distribution | Version | Bash | CI Status | Package Manager | Notes |
+|-------------|---------|------|-----------|-----------------|-------|
+| **Ubuntu** | 22.04 LTS | 5.1 | ✅ Verified | `apt` | CI runner (native) |
+| **Ubuntu** | 24.04 LTS | 5.2 | ✅ Verified | `apt` | CI runner (native) |
+| **Ubuntu** | 24.04 LTS | 4.4 | ✅ Verified | `apt` | Minimum bash version (compiled from source) |
+| **Debian** | 12 (Bookworm) | 5.2 | ✅ Verified | `apt` | Docker container |
+| **Kali Linux** | Rolling | 5.2 | ✅ Verified | `apt` | Docker container; socat typically pre-installed |
+| **Rocky Linux** | 9 | 5.1 | ✅ Verified | `dnf` | Docker container; RHEL binary-compatible |
+| **AlmaLinux** | 9 | 5.1 | ✅ Verified | `dnf` | Docker container; RHEL binary-compatible |
+| **Arch Linux** | Rolling | 5.2 | ✅ Verified | `pacman` | Docker container |
+
+**Also expected to work** on any Linux distribution with bash 4.4+ and standard coreutils, including Fedora, openSUSE, Amazon Linux 2023, and Raspberry Pi OS. RHEL 8/9 are supported via the binary-compatible Rocky Linux and AlmaLinux test coverage.
 
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
@@ -267,6 +275,59 @@ socat-manager stop --all
 **Alternative**: Run directly without installing — `chmod +x socat_manager.sh && ./socat_manager.sh listen --port 8080`
 
 For detailed installation options including `make install`, user-local install, and virtual environment setup, see the [Usage Guide](USAGE_GUIDE.md).
+
+### Mode Examples
+
+Quick copy-paste examples for each operational mode. See the [Usage Guide](USAGE_GUIDE.md) for complete options, dual-stack configuration, and operational scenarios.
+
+**Listen** — Start a TCP/UDP listener that captures incoming data:
+```bash
+socat-manager listen --port 8080
+socat-manager listen --port 5353 --proto udp4
+socat-manager listen --port 8080 --dual-stack --capture
+```
+
+**Batch** — Launch listeners on multiple ports simultaneously:
+```bash
+socat-manager batch --ports 8080,8081,8082
+socat-manager batch --range 9000-9010
+socat-manager batch --file conf/ports.conf --proto udp4
+```
+
+**Forward** — Relay traffic from a local port to a remote host:
+```bash
+socat-manager forward --lport 8080 --rhost 10.0.0.5 --rport 80
+socat-manager forward --lport 5353 --rhost 10.0.0.1 --rport 53 --proto udp4
+socat-manager forward --lport 443 --rhost backend.local --rport 8443 --capture
+```
+
+**Tunnel** — Create a TLS-encrypted tunnel (auto-generates certificates):
+```bash
+socat-manager tunnel --port 4443 --rhost 10.0.0.5 --rport 22
+socat-manager tunnel --port 8443 --rhost db.internal --rport 3306 --capture
+```
+
+**Redirect** — Transparent port redirection with optional traffic capture:
+```bash
+socat-manager redirect --lport 80 --rhost 192.168.1.10 --rport 8080
+socat-manager redirect --lport 53 --rhost 10.0.0.1 --rport 5353 --proto udp4
+socat-manager redirect --lport 443 --rhost backend --rport 8443 --dual-stack
+```
+
+**Status** — View active sessions and session details:
+```bash
+socat-manager status
+socat-manager status --detail
+socat-manager status --cleanup
+```
+
+**Stop** — Terminate sessions by name, port, PID, or all at once:
+```bash
+socat-manager stop --all
+socat-manager stop --name listen-tcp4-8080
+socat-manager stop --port 8080
+socat-manager stop --pid 12345
+```
 
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
@@ -690,7 +751,7 @@ socat-manager/                    # Repository root
 │   └── socat-manager             # System-wide wrapper script
 ├── templates/
 │   └── activate.sh              # Virtual environment activation template
-├── tests/                       # BATS test suite (182 tests)
+├── tests/                       # BATS test suite (187 tests)
 │   ├── helpers/test_helper.bash  # Shared setup/teardown
 │   ├── stubs/                    # Mock binaries (socat, ss, openssl)
 │   ├── fixtures/                 # Test data (session files, port configs)
@@ -803,7 +864,7 @@ For additional troubleshooting scenarios, see the [Usage Guide](USAGE_GUIDE.md#1
 
 ## Testing
 
-The project includes a comprehensive test suite built on [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System) with 182 tests covering validation, session management, lifecycle operations, protocol-scoped stop, and traffic capture.
+The project includes a comprehensive test suite built on [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System) with 187 tests covering validation, session management, lifecycle operations, protocol-scoped stop, and traffic capture.
 
 ```bash
 # Run the full test suite (lint + all tests)
@@ -853,7 +914,7 @@ Contributions are welcome and appreciated. To contribute:
 
 ### Guidelines
 
-- Run `make test` before submitting — all 182 tests must pass
+- Run `make test` before submitting — all 187 tests must pass
 - Run `make lint` — ShellCheck must report no warnings
 - Follow the existing code style: comprehensive function documentation headers (Description, Parameters, Returns), inline comments explaining non-obvious logic, and consistent formatting
 - All user-supplied inputs must pass through the existing validation functions
@@ -923,5 +984,30 @@ MIT License · Copyright (c) 2026 Sandler73
 ```
 
 This software is intended for authorized network operations, security testing, research, and educational purposes only. Users are solely responsible for ensuring their use complies with all applicable laws and regulations.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
+---
+
+## Support
+
+<p align="center">
+  ⭐ If this project helps you operationally, please consider giving it a star! ⭐
+</p>
+
+<p align="center">
+  <a href="https://github.com/Sandler73/Socat-Network-Operations-Manager/issues/new?template=bug_report.md">Report Bug</a>
+  ·
+  <a href="https://github.com/Sandler73/Socat-Network-Operations-Manager/issues/new?template=feature_request.md">Request Feature</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sponsors/Sandler73">
+    <img src="https://img.shields.io/badge/Sponsor-❤️-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor">
+  </a>
+  <a href="https://ko-fi.com/Sandler73">
+    <img src="https://img.shields.io/badge/Ko--fi-Buy%20Me%20a%20Coffee-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi">
+  </a>
+</p>
 
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>

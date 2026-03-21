@@ -46,14 +46,17 @@ teardown() {
 
 @test "check_port_available: returns 1 when TCP port is in use" {
     set_ss_state "8080:tcp"
-    run check_port_available "8080" "tcp4"
-    [ "$status" -eq 1 ]
+    # Call directly without 'run' to avoid BATS $() subshell where
+    # ss function override does not propagate reliably.
+    # The && ... || pattern captures the return code explicitly.
+    check_port_available "8080" "tcp4" && _rc=0 || _rc=$?
+    [ "$_rc" -eq 1 ]
 }
 
 @test "check_port_available: returns 1 when UDP port is in use" {
     set_ss_state "5353:udp"
-    run check_port_available "5353" "udp4"
-    [ "$status" -eq 1 ]
+    check_port_available "5353" "udp4" && _rc=0 || _rc=$?
+    [ "$_rc" -eq 1 ]
 }
 
 @test "check_port_available: TCP occupied does NOT block UDP on same port" {
@@ -195,8 +198,8 @@ teardown() {
 
 @test "check_port_freed: returns 1 when TCP port is still bound" {
     set_ss_state "8080:tcp"
-    run check_port_freed "8080" "tcp4" 1
-    [ "$status" -eq 1 ]
+    check_port_freed "8080" "tcp4" 1 && _rc=0 || _rc=$?
+    [ "$_rc" -eq 1 ]
 }
 
 @test "check_port_freed: TCP bound does not affect UDP freed check" {

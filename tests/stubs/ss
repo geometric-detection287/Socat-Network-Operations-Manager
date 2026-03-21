@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#======================================================================
+# STUB       : tests/stubs/ss
+#======================================================================
+# Synopsis   : Mock ss (socket statistics) binary for BATS testing.
+#
+# Description: Replaces the real ss in PATH during tests. The script
+#              calls ss to check port availability and to find PIDs
+#              bound to ports. This stub reads a state file to
+#              determine which ports to report as listening.
+#
+#              State file format (one entry per line):
+#                port:proto[:pid]
+#              Examples:
+#                8080:tcp         → port 8080 listening on TCP (no PID)
+#                5353:udp         → port 5353 listening on UDP
+#                8443:tcp:12345   → port 8443 listening on TCP, PID 12345
+#
+#              The stub parses its command-line flags to determine
+#              whether to report TCP entries, UDP entries, or both,
+#              and whether to include PID information.
+#
+# Environment:
+#   TEST_TMPDIR - Temp directory for this test (set by test_helper)
+#                 Reads state from ${TEST_TMPDIR}/.ss_state
+#
+# Notes      : - This file must be executable (chmod +x)
+#              - set_ss_state() in test_helper.bash manages the state file
+#              - Output format mimics real ss output closely enough for
+#                the grep patterns used by socat_manager.sh
+#
+# Version    : 1.0.0
+#======================================================================
+
+STATE_FILE="${TEST_TMPDIR:-.}/.ss_state"
+
+# Parse flags to determine what to show
+show_tcp=false
+show_udp=false
+show_pids=false
+show_listening=false
+
+for arg in "$@"; do
+    case "${arg}" in
+        *t*) show_tcp=true ;;
+    esac
+    case "${arg}" in
+        *u*) show_udp=true ;;
+    esac
+    case "${arg}" in
+        *p*) show_pids=true ;;
+    esac
+    case "${arg}" in
+        *l*) show_listening=true ;;
+    esac
+done
+
+# If no state file exists, output nothing (all ports available)
+if [[ ! -f "${STATE_FILE}" ]]; then
+    exit 0
+fi
+
+# Print header (mimics real ss output)
+if [[ "${show_pids}" == true ]]; then
+    echo "State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port  Process"
+else
+    echo "State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port"
+fi
+
+# Read state file and output matching entries
+while IFS=: read -r port proto pid_val; do
+    # Skip empty lines and comments
+    [[ -z "${port}" ]] && continue
+    [[ "${port}" == \#* ]] && continue
+
+    # Filter by protocol based on flags
+    if [[ "${proto}" == "tcp" ]] && [[ "${show_tcp}" != true ]]; then
+        continue
+    fi
+    if [[ "${proto}" == "udp" ]] && [[ "${show_udp}" != true ]]; then
+        continue
+    fi
+
+    # Build output line matching real ss format
+    # Real ss output: LISTEN  0  128  0.0.0.0:8080  0.0.0.0:*  users:(("socat",pid=12345,fd=5))
+    local state="LISTEN"
+    local local_addr="0.0.0.0:${port}"
+    local peer_addr="0.0.0.0:*"
+
+    if [[ "${show_pids}" == true ]] && [[ -n "${pid_val}" ]]; then
+        echo "${state}  0  128  ${local_addr}  ${peer_addr}  users:((\"socat\",pid=${pid_val},fd=5))"
+    else
+        echo "${state}  0  128  ${local_addr}  ${peer_addr}"
+    fi
+done < "${STATE_FILE}"
+
+exit 0

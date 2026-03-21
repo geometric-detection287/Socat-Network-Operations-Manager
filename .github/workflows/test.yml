@@ -198,7 +198,7 @@ jobs:
       - name: Install prerequisites (dnf)
         if: matrix.pkg_manager == 'dnf'
         run: |
-          dnf install -y bash git curl make coreutils procps-ng util-linux
+          dnf install -y --allowerasing bash git curl make coreutils procps-ng util-linux
           bash --version | head -1
 
       - name: Install prerequisites (pacman)

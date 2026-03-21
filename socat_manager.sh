@@ -587,8 +587,9 @@ generate_session_id() {
 #======================================================================
 # SESSION MANAGEMENT v2.2
 # Tracks all spawned socat processes via session files in sessions/.
-# Each session file uses .session extension and contains metadata 
-# including PID, PGID, command, protocol, timestamps, and session ID.
+# Each session file uses .session extension and contains comprehensive
+# metadata including PID, PGID, command, protocol, timestamps, and
+# session ID.
 #
 # Key design decisions:
 #   - Unique 8-char hex session IDs for unambiguous identification
@@ -617,9 +618,9 @@ generate_session_id() {
 
 # Function: session_register
 # Description: Register a new socat session by writing a session file
-#              with metadata. Uses the session ID as the primary key.
-#              File permissions set to 600 to protect command strings 
-#              and PID information.
+#              with comprehensive metadata. Uses the session ID as the
+#              primary key. File permissions set to 600 to protect
+#              command strings and PID information.
 # Parameters:
 #   $1  - Session ID (unique 8-char hex)
 #   $2  - Session name (human-readable, e.g., "redir-8443-example.com-443")
@@ -2596,8 +2597,8 @@ mode_stop() {
 }
 
 # Function: _stop_session
-# Description: Stop a single session by its session ID. Implements a 
-#              protocol-aware stop sequence:
+# Description: Stop a single session by its session ID. Implements a
+#              comprehensive, protocol-aware stop sequence:
 #
 #              1. Read session metadata including PROTOCOL
 #              2. Signal watchdog to stop (if applicable)
@@ -2924,7 +2925,7 @@ check_socat() {
 show_main_help() {
     cat << 'HELPEOF'
 NAME
-    socat_manager.sh - Socat Network Operations Manager
+    socat_manager.sh - Comprehensive socat network operations manager
 
 SYNOPSIS
     socat_manager.sh <MODE> [OPTIONS]
@@ -3424,4 +3425,9 @@ main() {
 }
 
 # Entry point
-main "$@"
+# Guard allows sourcing without execution (used by test framework).
+# When executed directly (./socat_manager.sh), BASH_SOURCE[0] == $0 → runs main.
+# When sourced (source socat_manager.sh), BASH_SOURCE[0] != $0 → functions loaded only.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

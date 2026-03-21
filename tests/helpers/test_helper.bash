@@ -52,6 +52,7 @@ SCRIPT_PATH="${PROJECT_ROOT}/socat_manager.sh"
 
 # Path to the stubs directory
 STUBS_DIR="${PROJECT_ROOT}/tests/stubs"
+export STUBS_DIR
 
 # Path to the fixtures directory
 FIXTURES_DIR="${PROJECT_ROOT}/tests/fixtures"
@@ -116,6 +117,34 @@ helper_setup() {
     # All functions, constants, and variables are now available.
     # shellcheck disable=SC1090
     source "${TEST_TMPDIR}/socat_manager.sh"
+
+    # Override external commands with bash functions that delegate to stubs.
+    #
+    # WHY: PATH prepending + hash -r is insufficient on CI runners.
+    # GitHub Actions runners have real ss/socat/openssl installed at
+    # /usr/sbin/ or /usr/bin/. Despite stubs being first on PATH,
+    # bash may still resolve to the real binary through mechanisms
+    # that survive hash -r (e.g., BATS subshell inheritance, cached
+    # lookups in command substitutions, or OS-level command caching).
+    #
+    # SOLUTION: Bash function lookup has STRICTLY HIGHER priority than
+    # PATH-based external command lookup. By defining ss/socat/openssl
+    # as functions, every call within the test shell — including calls
+    # from sourced script functions like check_port_available — will
+    # route to the stub scripts. This cannot be bypassed.
+    #
+    # NOTE: export -f exports the functions to child bash processes
+    # (e.g., setsid bash -c '...'). For exec'd commands (exec socat),
+    # bash falls back to PATH lookup, which still finds the stub.
+    # shellcheck disable=SC2032
+    ss() { "${STUBS_DIR}/ss" "$@"; }
+    export -f ss
+
+    socat() { "${STUBS_DIR}/socat" "$@"; }
+    export -f socat
+
+    openssl() { "${STUBS_DIR}/openssl" "$@"; }
+    export -f openssl
 
     # Create runtime directories in the temp location.
     # _ensure_dirs is defined in the script and creates sessions/, logs/,

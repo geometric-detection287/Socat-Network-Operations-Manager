@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/[github/actions/workflow/status/Sandler73/socat-manager/test.yml](https://github.com/Sandler73/Socat-Network-Operations-Manager/actions/workflows/test.yml)?style=flat-square&label=tests&logo=githubactions&logoColor=white" alt="CI Tests">
+  <img src="https://img.shields.io/github/actions/workflow/status/Sandler73/socat-manager/test.yml?style=flat-square&label=tests&logo=githubactions&logoColor=white" alt="CI Tests">
   <img src="https://img.shields.io/badge/BATS-143%2B%20tests-blue?style=flat-square" alt="143+ BATS Tests">
 </p>
 

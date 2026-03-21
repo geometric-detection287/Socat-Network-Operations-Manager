@@ -3,30 +3,18 @@
 #======================================================================
 # Synopsis   : Continuous integration workflow for socat_manager.sh.
 #
-# Description: Runs on every push and pull request. Two parallel jobs:
+# Description: Runs on every push and pull request. Three parallel jobs:
 #
 #              1. lint    — ShellCheck static analysis (fast, ~30s)
-#              2. test    — BATS test suite across a matrix of bash
-#                           versions (4.4, 5.1, 5.2) and Ubuntu
-#                           releases (22.04, 24.04)
-#
-#              The lint job runs independently so ShellCheck failures
-#              are reported immediately without waiting for the full
-#              test matrix. The test job installs BATS from GitHub
-#              releases (not apt, which ships outdated versions) and
-#              runs the full unit + integration test suite.
+#              2. test    — BATS test suite on native Ubuntu runners
+#                           across bash versions (4.4, 5.1, 5.2)
+#              3. test-distros — BATS test suite on additional Linux
+#                           distributions via Docker containers
+#                           (Debian, Kali, Rocky, AlmaLinux, Arch)
 #
 # Triggers   : push to any branch, pull_request to any branch
 #
-# Usage      : This file goes at .github/workflows/test.yml
-#              No configuration needed — it runs automatically.
-#
-# Required   : Repository must contain:
-#              - socat_manager.sh (main script)
-#              - .shellcheckrc (ShellCheck configuration)
-#              - tests/ directory (BATS test files)
-#
-# Version    : 1.0.0
+# Version    : 1.1.0
 #======================================================================
 
 name: Test & Lint
@@ -37,16 +25,18 @@ on:
   pull_request:
     branches: ['**']
 
+# Force Node.js 24 for all JavaScript-based actions to resolve
+# the Node.js 20 deprecation warnings (effective June 2, 2026).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # Cancel in-progress runs when a new commit is pushed to the same branch/PR.
-# This prevents wasted CI minutes on superseded commits.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 # =====================================================================
 # JOB: lint
-# Runs ShellCheck static analysis on the main script.
-# Fast (~30s) and independent of the test matrix.
 # =====================================================================
 
 jobs:
@@ -60,95 +50,70 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
-      - name: Run ShellCheck
+      - name: Lint socat_manager.sh
         run: shellcheck --shell=bash --severity=warning socat_manager.sh
 
-      - name: Lint wrapper script
+      - name: Lint bin/socat-manager
         run: shellcheck --shell=bash --severity=warning bin/socat-manager
 
   # ===================================================================
   # JOB: test
-  # Runs the full BATS test suite across a matrix of bash versions
-  # and Ubuntu releases. Each combination runs independently.
-  #
-  # Matrix:
-  #   os:   ubuntu-22.04, ubuntu-24.04
-  #   bash: 4.4, 5.1, 5.2 (compiled from source for non-system versions)
-  #
-  # BATS is installed from GitHub releases to get the latest version
-  # (apt's bats package is typically 1.2.x, which is ancient).
+  # Native Ubuntu runners with bash version matrix.
+  # Tests system bash on 22.04 (5.1) and 24.04 (5.2), plus bash 4.4
+  # compiled from source to verify minimum supported version.
   # ===================================================================
 
   test:
-    name: BATS (bash ${{ matrix.bash }}, ${{ matrix.os }})
+    name: BATS (${{ matrix.bash_label }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: lint  # Only run tests if lint passes
+    needs: lint
 
     strategy:
-      fail-fast: false  # Run all matrix entries even if one fails
+      fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
-        bash: ['system']  # Use system bash by default
         include:
-          # Test with the system bash on each OS (5.1 on 22.04, 5.2 on 24.04)
           - os: ubuntu-22.04
             bash: 'system'
-            bash_label: '5.1 (system)'
+            bash_label: 'bash 5.1'
           - os: ubuntu-24.04
             bash: 'system'
-            bash_label: '5.2 (system)'
-          # Test with bash 4.4 (minimum supported version) on latest Ubuntu
+            bash_label: 'bash 5.2'
           - os: ubuntu-24.04
             bash: '4.4'
-            bash_label: '4.4 (compiled)'
+            bash_label: 'bash 4.4'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # --- Install BATS from GitHub releases ---
       - name: Install BATS
         run: |
-          BATS_VERSION="1.11.1"
-          echo "Installing BATS v${BATS_VERSION}..."
-          git clone --depth 1 --branch "v${BATS_VERSION}" \
+          git clone --depth 1 --branch "v1.11.1" \
             https://github.com/bats-core/bats-core.git /tmp/bats-core
           sudo /tmp/bats-core/install.sh /usr/local
           bats --version
 
-      # --- Install bash 4.4 from source (only for the 4.4 matrix entry) ---
       - name: Compile bash 4.4 from source
         if: matrix.bash == '4.4'
         run: |
-          echo "Compiling bash 4.4 from source..."
           sudo apt-get update && sudo apt-get install -y build-essential
           cd /tmp
           curl -fsSL https://ftp.gnu.org/gnu/bash/bash-4.4.tar.gz | tar xz
           cd bash-4.4
-          ./configure --prefix=/usr/local/bash-4.4 2>&1 | tail -5
-          make -j"$(nproc)" 2>&1 | tail -5
-          sudo make install 2>&1 | tail -5
-          /usr/local/bash-4.4/bin/bash --version | head -1
-          # Make this bash the default for the test run
+          ./configure --prefix=/usr/local/bash-4.4 2>&1 | tail -3
+          make -j"$(nproc)" 2>&1 | tail -3
+          sudo make install 2>&1 | tail -3
           echo "/usr/local/bash-4.4/bin" >> "$GITHUB_PATH"
 
-      # --- Verify bash version ---
       - name: Verify bash version
-        run: |
-          echo "Bash version:"
-          bash --version | head -1
-          echo "Bash location:"
-          which bash
+        run: bash --version | head -1
 
-      # --- Ensure test stubs are executable ---
       - name: Prepare test stubs
         run: chmod +x tests/stubs/*
 
-      # --- Run unit tests ---
       - name: Run unit tests
         run: |
           mkdir -p test-results
-          echo "Running unit tests..."
           bats tests/unit/ --tap > test-results/unit.tap 2>&1 || {
             echo "Unit tests failed. Output:"
             cat test-results/unit.tap
@@ -156,11 +121,9 @@ jobs:
           }
           cat test-results/unit.tap
 
-      # --- Run integration tests ---
       - name: Run integration tests
         run: |
           mkdir -p test-results
-          echo "Running integration tests..."
           bats tests/integration/ --tap > test-results/integration.tap 2>&1 || {
             echo "Integration tests failed. Output:"
             cat test-results/integration.tap
@@ -168,22 +131,128 @@ jobs:
           }
           cat test-results/integration.tap
 
-      # --- Upload test results on failure ---
-      - name: Upload test results
+      - name: Upload test results on failure
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results-bash-${{ matrix.bash }}-${{ matrix.os }}
+          name: test-results-${{ matrix.bash_label }}-${{ matrix.os }}
           path: test-results/
           retention-days: 14
 
-      # --- Summary ---
       - name: Test summary
         if: always()
         run: |
-          echo ""
           echo "=== Test Matrix Entry ==="
           echo "  OS:   ${{ matrix.os }}"
-          echo "  Bash: ${{ matrix.bash_label || matrix.bash }}"
+          echo "  Bash: ${{ matrix.bash_label }}"
           echo "  BATS: $(bats --version)"
-          echo ""
+
+  # ===================================================================
+  # JOB: test-distros
+  # Additional Linux distributions via Docker containers.
+  # Each container installs bash and BATS, then runs the test suite.
+  # Verifies compatibility across the Linux ecosystem.
+  #
+  # Notes:
+  #   - CentOS 7 is EOL and not included (use Rocky/Alma instead)
+  #   - RHEL requires subscription; Rocky/Alma are free equivalents
+  #   - Kali uses kali-rolling (always latest)
+  # ===================================================================
+
+  test-distros:
+    name: BATS (${{ matrix.distro_label }})
+    runs-on: ubuntu-latest
+    needs: lint
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - container: 'debian:12'
+            distro_label: 'Debian 12'
+            pkg_manager: 'apt'
+          - container: 'kalilinux/kali-rolling'
+            distro_label: 'Kali Rolling'
+            pkg_manager: 'apt'
+          - container: 'rockylinux:9'
+            distro_label: 'Rocky Linux 9'
+            pkg_manager: 'dnf'
+          - container: 'almalinux:9'
+            distro_label: 'AlmaLinux 9'
+            pkg_manager: 'dnf'
+          - container: 'archlinux:latest'
+            distro_label: 'Arch Linux'
+            pkg_manager: 'pacman'
+
+    container:
+      image: ${{ matrix.container }}
+
+    steps:
+      - name: Install prerequisites (apt)
+        if: matrix.pkg_manager == 'apt'
+        run: |
+          apt-get update
+          apt-get install -y bash git curl make coreutils procps util-linux
+          bash --version | head -1
+
+      - name: Install prerequisites (dnf)
+        if: matrix.pkg_manager == 'dnf'
+        run: |
+          dnf install -y bash git curl make coreutils procps-ng util-linux
+          bash --version | head -1
+
+      - name: Install prerequisites (pacman)
+        if: matrix.pkg_manager == 'pacman'
+        run: |
+          pacman -Syu --noconfirm bash git curl make coreutils procps-ng util-linux
+          bash --version | head -1
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install BATS from source
+        run: |
+          git clone --depth 1 --branch "v1.11.1" \
+            https://github.com/bats-core/bats-core.git /tmp/bats-core
+          cd /tmp/bats-core
+          ./install.sh /usr/local
+          bats --version
+
+      - name: Prepare test stubs
+        run: chmod +x tests/stubs/*
+
+      - name: Run unit tests
+        run: |
+          mkdir -p test-results
+          bats tests/unit/ --tap > test-results/unit.tap 2>&1 || {
+            echo "Unit tests failed:"
+            cat test-results/unit.tap
+            exit 1
+          }
+          cat test-results/unit.tap
+
+      - name: Run integration tests
+        run: |
+          mkdir -p test-results
+          bats tests/integration/ --tap > test-results/integration.tap 2>&1 || {
+            echo "Integration tests failed:"
+            cat test-results/integration.tap
+            exit 1
+          }
+          cat test-results/integration.tap
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.distro_label }}
+          path: test-results/
+          retention-days: 14
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "=== Test Matrix Entry ==="
+          echo "  Distro: ${{ matrix.distro_label }}"
+          echo "  Bash:   $(bash --version | head -1)"
+          echo "  BATS:   $(bats --version)"

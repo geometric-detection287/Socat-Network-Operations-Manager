@@ -79,6 +79,8 @@
 
 Every launched socat process receives a unique 8-character hex **Session ID**, is placed in its own **process group** via `setsid`, and is tracked in a persistent `.session` metadata file. This enables reliable status queries and clean shutdowns across terminal sessions and script invocations — you can launch a redirector in one terminal, check its status from another, and stop it from a third.
 
+**[Full Documentation Wiki](https://github.com/Sandler73/Socat-Network-Operations-Manager/wiki)** — detailed guides, architecture, scenarios, and developer reference.
+
 <p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---

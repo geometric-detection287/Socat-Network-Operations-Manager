@@ -353,3 +353,61 @@ teardown() {
     count="$(count_session_files)"
     [ "${count}" -eq 0 ]
 }
+
+# =====================================================================
+# session_read_field: awk exact-match (H-4 audit remediation)
+# Ensures field lookup uses exact key match, not regex
+# =====================================================================
+
+@test "session_read_field: reads value containing equals sign" {
+    create_mock_session "aabb1122" "test-session" "99999"
+    # Add a field whose value contains equals signs (tests awk substr extraction)
+    echo "CUSTOM_DATA=key1=val1,key2=val2,key3=val3" >> "${SESSION_DIR}/aabb1122.session"
+
+    local result
+    result="$(session_read_field "${SESSION_DIR}/aabb1122.session" "CUSTOM_DATA")"
+    [ "${result}" = "key1=val1,key2=val2,key3=val3" ]
+}
+
+@test "session_read_field: does not match partial field names" {
+    create_mock_session "aabb1122" "test-session" "99999"
+    # PID field exists; LAUNCHER_PID also exists - make sure reading PID doesn't match LAUNCHER_PID
+    echo "LAUNCHER_PID=88888" >> "${SESSION_DIR}/aabb1122.session"
+
+    local result
+    result="$(session_read_field "${SESSION_DIR}/aabb1122.session" "PID")"
+    # Should get the PID value (99999), not LAUNCHER_PID (88888)
+    [ "${result}" = "99999" ]
+}
+
+@test "session_read_field: handles field with dots in value" {
+    create_mock_session "aabb1122" "test-session" "99999" "redirect" "tcp4" "8443" "192.168.1.100" "443"
+
+    local result
+    result="$(session_read_field "${SESSION_DIR}/aabb1122.session" "REMOTE_HOST")"
+    [ "${result}" = "192.168.1.100" ]
+}
+
+# =====================================================================
+# _session_lock / _session_unlock (M-2 audit remediation)
+# Advisory file locking via flock
+# =====================================================================
+
+@test "_session_lock: acquires lock successfully" {
+    run _session_lock
+    [ "$status" -eq 0 ]
+    # Clean up
+    _session_unlock 2>/dev/null || true
+}
+
+@test "_session_unlock: releases lock without error" {
+    _session_lock || true
+    run _session_unlock
+    [ "$status" -eq 0 ]
+}
+
+@test "_session_lock: lock file is created in session directory" {
+    _session_lock || true
+    [ -f "${SESSION_DIR}/.lock" ]
+    _session_unlock 2>/dev/null || true
+}

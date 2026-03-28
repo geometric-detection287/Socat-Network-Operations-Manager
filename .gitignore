@@ -18,6 +18,7 @@ sessions/*.session
 sessions/*.pid
 sessions/*.stop
 sessions/*.launching
+sessions/.lock
 
 # Log files (master logs, session logs, error logs, capture logs)
 logs/

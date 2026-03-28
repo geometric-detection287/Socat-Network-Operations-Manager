@@ -1,4 +1,4 @@
-# socat_manager session file v2.2 (test fixture)
+# socat_manager session file v2.3 (test fixture)
 # Generated: 2026-03-20 14:30:00
 SESSION_ID=abcd1234
 SESSION_NAME=redir-tcp4-8443-example.com-443

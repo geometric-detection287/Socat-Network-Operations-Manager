@@ -6,24 +6,27 @@
 #
 # Targets    :
 #   help             - Show all targets with descriptions
-#   check-deps       - Verify all prerequisites
-#   lint             - Run ShellCheck static analysis
+#   check-deps       - Verify all prerequisites (required + optional)
+#   lint             - Run ShellCheck on all bash files (script, bin, stubs)
 #   test             - Run full test suite (lint + BATS)
 #   test-unit        - Run unit tests only (fast)
 #   test-integration - Run integration tests only
+#   test-smoke       - Quick smoke test (menu launch, help, version, status)
 #   install          - Install system-wide command
 #   uninstall        - Remove system-wide installation
+#   verify           - Post-install verification (includes menu check)
 #   venv             - Create isolated virtual environment
-#   dist             - Build release tarballs + checksums
-#   clean            - Remove build artifacts
+#   dist             - Build release tarballs + checksums (includes wiki, .github)
+#   clean            - Remove build artifacts, test temp files, lock files
 #
 # Usage      :
 #   make install                      # Default paths (requires sudo)
 #   make install PREFIX=/usr/local    # Custom prefix
 #   make test                         # Full lint + test suite
+#   make test-smoke                   # Quick validation
 #   make venv VENV_DIR=./my-env       # Custom venv location
 #
-# Version    : 1.0.0
+# Version    : 2.0.0
 #======================================================================
 
 # =====================================================================
@@ -59,7 +62,7 @@ SHELLCHECK  := shellcheck
 # PHONY DECLARATIONS
 # =====================================================================
 
-.PHONY: help check-deps lint test test-unit test-integration \
+.PHONY: help check-deps lint test test-unit test-integration test-smoke \
         install uninstall verify venv dist clean _check-socat
 
 .DEFAULT_GOAL := help
@@ -144,6 +147,8 @@ check-deps: ## Verify all required and optional dependencies
 	@if command -v openssl >/dev/null 2>&1; then echo "✓ found"; else echo "- not found (tunnel mode auto-cert)"; fi
 	@printf "    %-14s" "ss:"
 	@if command -v ss >/dev/null 2>&1; then echo "✓ found"; else echo "- not found (iproute2)"; fi
+	@printf "    %-14s" "flock:"
+	@if command -v flock >/dev/null 2>&1; then echo "✓ found"; else echo "- not found (session locking disabled)"; fi
 	@printf "    %-14s" "lsof:"
 	@if command -v lsof >/dev/null 2>&1; then echo "✓ found"; else echo "- not found"; fi
 	@printf "    %-14s" "pstree:"
@@ -154,7 +159,7 @@ check-deps: ## Verify all required and optional dependencies
 # LINTING
 # =====================================================================
 
-lint: ## Run ShellCheck static analysis on the main script
+lint: ## Run ShellCheck on all bash files (script, bin, stubs, helpers)
 	@echo ""
 	@if ! command -v $(SHELLCHECK) >/dev/null 2>&1; then \
 		echo "  ⚠ ShellCheck not found — skipping lint"; \
@@ -164,12 +169,24 @@ lint: ## Run ShellCheck static analysis on the main script
 	fi
 	@echo "  Running ShellCheck..."
 	@$(SHELLCHECK) --shell=bash --severity=warning $(SCRIPT) \
-		&& echo "  ✓ ShellCheck passed" \
-		|| { echo "  ✗ ShellCheck found issues"; exit 1; }
+		&& echo "  ✓ ShellCheck passed: $(SCRIPT)" \
+		|| { echo "  ✗ ShellCheck found issues in $(SCRIPT)"; exit 1; }
 	@if [ -f bin/socat-manager ]; then \
 		$(SHELLCHECK) --shell=bash --severity=warning bin/socat-manager \
-			&& echo "  ✓ ShellCheck passed (bin/socat-manager)" \
+			&& echo "  ✓ ShellCheck passed: bin/socat-manager" \
 			|| { echo "  ✗ ShellCheck found issues in bin/socat-manager"; exit 1; }; \
+	fi
+	@for stub in tests/stubs/*; do \
+		if [ -f "$$stub" ]; then \
+			$(SHELLCHECK) --shell=bash --severity=warning "$$stub" \
+				&& echo "  ✓ ShellCheck passed: $$stub" \
+				|| { echo "  ✗ ShellCheck found issues in $$stub"; exit 1; }; \
+		fi; \
+	done
+	@if [ -f tests/helpers/test_helper.bash ]; then \
+		$(SHELLCHECK) --shell=bash --severity=warning tests/helpers/test_helper.bash \
+			&& echo "  ✓ ShellCheck passed: tests/helpers/test_helper.bash" \
+			|| { echo "  ✗ ShellCheck found issues in tests/helpers/test_helper.bash"; exit 1; }; \
 	fi
 	@echo ""
 
@@ -194,6 +211,39 @@ test-integration: ## Run integration tests only (lifecycle, dual-stack, capture)
 	@echo ""
 	@echo "  Running integration tests..."
 	@$(BATS) tests/integration/
+	@echo ""
+
+test-smoke: ## Quick smoke test (menu launch, help, version, status — no BATS needed)
+	@echo ""
+	@echo "  Running smoke tests..."
+	@echo "  ──────────────────────"
+	@# Version output
+	@printf "  %-30s" "Version output:"
+	@bash $(SCRIPT) --version >/dev/null 2>&1 && echo "✓" || { echo "✗ FAILED"; exit 1; }
+	@# Help output
+	@printf "  %-30s" "Help output:"
+	@bash $(SCRIPT) --help >/dev/null 2>&1 && echo "✓" || { echo "✗ FAILED"; exit 1; }
+	@# Status mode
+	@printf "  %-30s" "Status mode:"
+	@bash $(SCRIPT) status >/dev/null 2>&1 && echo "✓" || { echo "✗ FAILED"; exit 1; }
+	@# Interactive menu (launch and exit immediately)
+	@printf "  %-30s" "Interactive menu launch+exit:"
+	@echo "0" | bash $(SCRIPT) >/dev/null 2>&1 && echo "✓" || { echo "✗ FAILED"; exit 1; }
+	@# Menu mode (explicit)
+	@printf "  %-30s" "Menu mode (explicit):"
+	@echo "0" | bash $(SCRIPT) menu >/dev/null 2>&1 && echo "✓" || { echo "✗ FAILED"; exit 1; }
+	@# No false shutdown warnings
+	@printf "  %-30s" "No false shutdown warnings:"
+	@if bash $(SCRIPT) --version 2>&1 | grep -qi 'shutting down'; then \
+		echo "✗ FAILED (shutdown warning on --version)"; exit 1; \
+	else \
+		echo "✓"; \
+	fi
+	@# Syntax check
+	@printf "  %-30s" "Bash syntax check:"
+	@bash -n $(SCRIPT) 2>/dev/null && echo "✓" || { echo "✗ FAILED"; exit 1; }
+	@echo ""
+	@echo "  ✓ All smoke tests passed"
 	@echo ""
 
 # =====================================================================
@@ -345,6 +395,13 @@ verify: ## Verify installation is working correctly
 	else \
 		echo "⚠ not found (install before use)"; \
 	fi
+	@# Check interactive menu launches and exits
+	@printf "  Interactive menu: "
+	@if echo "0" | socat-manager >/dev/null 2>&1; then \
+		echo "✓ launches and exits cleanly"; \
+	else \
+		echo "⚠ menu test failed (non-critical)"; \
+	fi
 	@echo ""
 	@echo "  ✓ Installation verified"
 	@echo ""
@@ -400,6 +457,14 @@ dist: ## Build release tarballs and SHA256 checksums
 		cp -r tests /tmp/$(DIST_NAME)/tests; \
 		chmod +x /tmp/$(DIST_NAME)/tests/stubs/* 2>/dev/null || true; \
 	fi
+	@# Include wiki if present
+	@if [ -d wiki ]; then \
+		cp -r wiki /tmp/$(DIST_NAME)/wiki; \
+	fi
+	@# Include .github if present (workflows, issue templates)
+	@if [ -d .github ]; then \
+		cp -r .github /tmp/$(DIST_NAME)/.github; \
+	fi
 	@tar czf $(DIST_DIR)/$(DIST_NAME).tar.gz -C /tmp $(DIST_NAME)
 	@echo "  Created: $(DIST_DIR)/$(DIST_NAME).tar.gz"
 	@# --- Venv example tarball ---
@@ -430,10 +495,15 @@ dist: ## Build release tarballs and SHA256 checksums
 # CLEAN
 # =====================================================================
 
-clean: ## Remove build artifacts and distribution packages
+clean: ## Remove build artifacts, test temp files, and lock files
 	@echo ""
 	@echo "  Cleaning..."
 	@rm -rf $(DIST_DIR)
 	@rm -rf /tmp/socat-manager-v*
+	@# Remove test temp directories and stub state files
+	@rm -rf tests/tmp tests/stubs/.socat_stub.log tests/stubs/.ss_state tests/stubs/.openssl_stub.log
+	@rm -f tests/**/.bats-run-* 2>/dev/null || true
+	@# Remove session lock file (advisory lock artifact)
+	@rm -f sessions/.lock 2>/dev/null || true
 	@echo "  ✓ Clean"
 	@echo ""

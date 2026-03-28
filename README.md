@@ -992,7 +992,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete details on every change.
 Distributed under the MIT License. See [LICENSE](LICENSE) for full terms.
 
 ```
-MIT License · Copyright (c) 2026 socat_manager Contributors
+MIT License · Copyright (c) 2026 Socat Network Operations Manager Contributors
 ```
 
 This software is intended for authorized network operations, security testing, research, and educational purposes only. Users are solely responsible for ensuring their use complies with all applicable laws and regulations.

@@ -37,9 +37,7 @@
 
 ---
 
-<p align="center">
-  <a href=[Full Documentation Wiki](https://github.com/Sandler73/Socat-Network-Operations-Manager/wiki)** — detailed guides, architecture, scenarios, and developer reference. </a>
-</p>
+**[Full Documentation Wiki](https://github.com/Sandler73/Socat-Network-Operations-Manager/wiki)** — detailed guides, architecture, scenarios, and developer reference.
 
 ---
 

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Interactive menu system**: Running with no arguments launches a full-featured
+  menu-driven interface with guided input collection, validation at every prompt,
+  and cancel/escape support (type `q` at any prompt to return to main menu).
+  Also accessible via `socat-manager menu`.
+- **ASCII art banner**: Stylized SOCAT block-letter banner in the interactive menu.
+- **Dependency check menu**: Option 8 in the interactive menu checks all required
+  and recommended dependencies with version info and status indicators.
+
+### Security (Audit Remediation)
+- **C-1**: Eliminated all `eval` calls — watchdog uses `bash -c` instead.
+- **C-2**: New `validate_socat_opts()` — whitelist validation on `--socat-opts` input.
+- **C-4**: New `validate_session_name()` — whitelist validation on `--name` input,
+  wired into all four mode parsers (listen, forward, tunnel, redirect).
+- **H-3**: `stop --pid` input validated as numeric-only before use.
+- **H-4**: `session_read_field` uses `awk` exact-match instead of `grep` regex.
+- **H-5**: All `DEFAULT_*` configuration variables marked `readonly`.
+- **M-2**: Advisory file locking via `flock` for session directory operations.
+- **M-4**: `MAX_SESSIONS=256` limit enforced at launch time.
+- **M-5**: Capture log files created with `chmod 600` (all 9 code paths).
+- **M-6**: IPv6 validation enhanced with length (2-39) and colon count (≤7) checks.
+- **L-1**: Terminal detection — color codes disabled when stderr is not a terminal.
+- **L-4**: Removed unused `DEFAULT_TIMEOUT`, `DEFAULT_MAX_CHILDREN`, `DEFAULT_BUFFER_SIZE`.
+
+### Changed
+- No-args behavior: shows interactive menu instead of help text.
+- Session file format comment updated to v2.3.
+- `_ensure_dirs` uses guard variable (called once, not per log write).
+- **Makefile v2.0.0**: Added `test-smoke` target (menu launch, help, version, syntax — no BATS needed).
+  `lint` now checks all bash files (stubs, helpers). `check-deps` checks `flock`. `dist` includes
+  `wiki/` and `.github/`. `clean` removes test artifacts and lock files. `verify` tests menu launch.
+- **Test suite**: 220 tests (up from 187). Added 33 tests covering `validate_socat_opts` (12),
+  `validate_session_name` (11), IPv6 rejection (4), `session_read_field` awk behavior (3),
+  `_session_lock` (3).
+- `.shellcheckrc`: Documented SC2015 pattern and nameref usage.
+- `.gitignore`: Added `sessions/.lock`.
+
+---
+
 ## [2.3.0] - 2026-03-20
 
 ### Added

